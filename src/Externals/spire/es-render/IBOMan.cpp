@@ -10,6 +10,8 @@
 #include "comp/StaticIBOMan.hpp"
 #include "comp/IBO.hpp"
 
+#include <boost/stacktrace.hpp>
+
 namespace es = spire;
 namespace shaders = spire;
 
@@ -75,7 +77,10 @@ const IBOMan::IBOData& IBOMan::getIBOData(const std::string& assetName) const
     }
   }
 
-  throw std::runtime_error("IBOMan: Unable to find IBO data");
+  std::ostringstream ostr;
+  ostr << "IBOMan: Unable to find IBO data: " << assetName <<
+	  std::endl << boost::stacktrace::stacktrace() << std::endl;
+  throw std::runtime_error(ostr.str());
 }
 
 //------------------------------------------------------------------------------
