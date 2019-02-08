@@ -370,6 +370,34 @@ GeometryHandle GlyphBuilder::buildGeometryObject(
   return geom;
 }
 
+enum class GlyphLocation
+{
+  LINEAR_OR_NODE,
+  EDGE,
+  FACE,
+  CELL
+};
+
+GlyphLocation dataLocation(const FieldInformation& finfo)
+{
+  //sets field location to 0 for linear data regardless of location
+  if (finfo.is_linear())
+    return GlyphLocation::LINEAR_OR_NODE;
+
+  if (finfo.is_point())
+    return GlyphLocation::LINEAR_OR_NODE;
+  if (finfo.is_line())
+    return GlyphLocation::EDGE;
+  if (finfo.is_surface())
+    return GlyphLocation::FACE;
+  if (finfo.is_volume())
+    return GlyphLocation::CELL;
+
+  // no such field
+  //TODO: error message
+  return GlyphLocation::LINEAR_OR_NODE;
+}
+
 void GlyphBuilder::renderVectors(
   FieldHandle field,
   boost::optional<ColorMapHandle> colorMap,
@@ -405,7 +433,6 @@ void GlyphBuilder::renderVectors(
   bool useLines = renState.mGlyphType == RenderState::GlyphType::LINE_GLYPH || renState.mGlyphType == RenderState::GlyphType::NEEDLE_GLYPH;
 
   SpireIBO::PRIMITIVE primIn = SpireIBO::PRIMITIVE::TRIANGLES;;
-  // Use Lines
   if (useLines)
   {
     primIn = SpireIBO::PRIMITIVE::LINES;
@@ -425,16 +452,11 @@ void GlyphBuilder::renderVectors(
   bool renderGlphysBellowThreshold = state->getValue(ShowFieldGlyphs::RenderGlyphsBellowThreshold).toBool();
   float threshold = state->getValue(ShowFieldGlyphs::Threshold).toDouble();
 
-  //sets field location for constant field data 1: node centered 2: edge centered 3: face centered 4: cell centered
-  int fieldLocation = finfo.is_point()*1 + finfo.is_line()*2 + finfo.is_surface()*3 + finfo.is_volume()*4;
-  //sets field location to 0 for linear data regardless of location
-  fieldLocation = fieldLocation * !finfo.is_linear();
+  auto fieldLocation = dataLocation(finfo);
 
-  switch(fieldLocation)
+  switch (fieldLocation)
   {
-
-    case 0: //linear data falls through to node data handling routine
-    case 1: //node centered constant data
+    case GlyphLocation::LINEAR_OR_NODE:
       for (const auto& node : facade->nodes())
       {
         interruptible->checkForInterruption();
@@ -477,7 +499,7 @@ void GlyphBuilder::renderVectors(
       }
       break;
 
-    case 2: //edge centered constant data
+    case GlyphLocation::EDGE:
       for (const auto& edge : facade->edges())
       {
         interruptible->checkForInterruption();
@@ -520,7 +542,7 @@ void GlyphBuilder::renderVectors(
       }
       break;
 
-    case 3: //face centered constant data
+    case GlyphLocation::FACE:
       for (const auto& face : facade->faces())
       {
         interruptible->checkForInterruption();
@@ -563,7 +585,7 @@ void GlyphBuilder::renderVectors(
       }
       break;
 
-    case 4: //cell centered constant data
+    case GlyphLocation::CELL:
       for (const auto& cell : facade->cells())
       {
         interruptible->checkForInterruption();
