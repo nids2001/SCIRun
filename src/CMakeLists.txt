@@ -122,6 +122,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules/Version.cc.in
  ${CMAKE_CURRENT_SOURCE_DIR}/Core/Application/Version.cc)
 set(version_file "${CMAKE_CURRENT_SOURCE_DIR}/Core/Application/Version.cc")
 
+INCLUDE(cotire)
 
 ########################################################################
 # SCIRUN version number.
@@ -619,6 +620,8 @@ ENDMACRO()
 MACRO(SCIRUN_ADD_LIBRARY library)
   ADD_LIBRARY(${library} ${ARGN})
 
+  cotire(${library})
+
   # Set up installer package (Release build only)
   IF(WIN32)
     INSTALL(TARGETS ${library} RUNTIME DESTINATION bin CONFIGURATIONS Release)
@@ -902,7 +905,7 @@ IF(BUILD_TESTING)
   ENDIF()
 ENDIF()
 
-SET_PROPERTY(TARGET cleaver PROPERTY FOLDER "Externals")
+#SET_PROPERTY(TARGET cleaver PROPERTY FOLDER "Externals")
 SET_PROPERTY(TARGET xml2 PROPERTY FOLDER "Externals")
 
 IF(BUILD_WITH_PYTHON)

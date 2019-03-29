@@ -59,7 +59,7 @@
 #include <Interface/Modules/Fields/SplitFieldByDomainDialog.h>
 #include <Interface/Modules/Fields/SplitFieldByConnectedRegionDialog.h>
 #include <Interface/Modules/Fields/SetFieldDataDialog.h>
-#include <Interface/Modules/Fields/InterfaceWithCleaverDialog.h>
+//#include <Interface/Modules/Fields/InterfaceWithCleaverDialog.h>
 #include <Interface/Modules/Fields/MapFieldDataFromElemToNodeDialog.h>
 #include <Interface/Modules/Fields/MapFieldDataFromNodeToElemDialog.h>
 #include <Interface/Modules/Fields/GetSliceFromStructuredFieldByIndicesDialog.h>
@@ -154,7 +154,7 @@ void ModuleDialogFactory::addDialogsToMakerMap1()
     ADD_MODULE_DIALOG(SplitFieldByDomain, SplitFieldByDomainDialog)
     ADD_MODULE_DIALOG(CalculateFieldData, CalculateFieldDataDialog)
     ADD_MODULE_DIALOG(SetFieldData, SetFieldDataDialog)
-    ADD_MODULE_DIALOG(InterfaceWithCleaver, InterfaceWithCleaverDialog)
+    //ADD_MODULE_DIALOG(InterfaceWithCleaver, InterfaceWithCleaverDialog)
     ADD_MODULE_DIALOG(SelectSubMatrix, SelectSubMatrixDialog)
     ADD_MODULE_DIALOG(GetMatrixSlice, GetMatrixSliceDialog)
     ADD_MODULE_DIALOG(MapFieldDataFromElemToNode, MapFieldDataFromElemToNodeDialog)

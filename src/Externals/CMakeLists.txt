@@ -30,8 +30,8 @@ MESSAGE(STATUS "Configuring External Packages")
 
 # TODO: move to external repository
 
-MESSAGE(STATUS "Configuring cleaver 1")
-ADD_SUBDIRECTORY(cleaver)
+#MESSAGE(STATUS "Configuring cleaver 1")
+#ADD_SUBDIRECTORY(cleaver)
 
 MESSAGE(STATUS "Configuring libxml2")
 ADD_SUBDIRECTORY(libxml2)

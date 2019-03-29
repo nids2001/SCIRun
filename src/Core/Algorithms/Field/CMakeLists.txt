@@ -28,7 +28,7 @@
 
 SET(Algorithms_Field_SRCS
   ReportFieldInfoAlgorithm.cc
-  InterfaceWithCleaverAlgorithm.cc
+  #InterfaceWithCleaverAlgorithm.cc
   InterfaceWithCleaver2Algorithm.cc
   CalculateNodeLocationFrequencyAlgorithm.cc
   RefineTetMeshLocallyAlgorithm.cc
@@ -36,7 +36,7 @@ SET(Algorithms_Field_SRCS
 
 SET(Algorithms_Field_HEADERS
   ReportFieldInfoAlgorithm.h
-  InterfaceWithCleaverAlgorithm.h
+  #InterfaceWithCleaverAlgorithm.h
   InterfaceWithCleaver2Algorithm.h
   CalculateNodeLocationFrequencyAlgorithm.h
   RefineTetMeshLocallyAlgorithm.h
@@ -52,7 +52,7 @@ TARGET_LINK_LIBRARIES(Algorithms_Field
   Core_Datatypes
   Core_Datatypes_Legacy_Field
   Algorithms_Base
-  cleaver
+  #cleaver
   Core_Algorithms_Legacy_Fields
   ${SCI_BOOST_LIBRARY}
   ${SCI_CLEAVER2_LIBRARY}

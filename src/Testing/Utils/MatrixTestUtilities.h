@@ -29,6 +29,7 @@
 #ifndef TESTING_UTIL_MATRIXTESTUTILITIES
 #define TESTING_UTIL_MATRIXTESTUTILITIES 1
 
+#include <cfloat>
 #include <gtest/gtest.h>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/tuple/tuple.hpp>
