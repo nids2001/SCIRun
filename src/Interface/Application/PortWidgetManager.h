@@ -30,8 +30,6 @@
 #define INTERFACE_APPLICATION_PORTWIDGETMANAGER_H
 
 #ifndef Q_MOC_RUN
-#include <boost/range/join.hpp>
-
 #include <Dataflow/Network/NetworkFwd.h>
 #endif
 
@@ -47,10 +45,7 @@ class PortWidgetManager
 public:
   typedef std::deque<PortWidget*> Ports;
 
-  auto getAllPorts() const -> decltype(boost::join(Ports(), Ports()))
-  {
-    return boost::join(inputPorts_, outputPorts_);
-  }
+  Ports getAllPorts() const;
 
   const Ports& inputs() const { return inputPorts_; }
   const Ports& outputs() const { return outputPorts_; }

@@ -774,6 +774,13 @@ void ModuleWidget::removeOutputPortsFromWidget(int index)
     qDebug() << "removeOutputPortsFromWidget failed";
 }
 
+PortWidgetManager::Ports PortWidgetManager::getAllPorts() const
+{
+  Ports all(inputPorts_);
+  std::copy(outputPorts_.begin(), outputPorts_.end(), std::back_inserter(all));
+  return all;
+}
+
 void PortWidgetManager::addInputsToLayout(QHBoxLayout* layout)
 {
   if (inputPorts_.empty())
