@@ -161,7 +161,7 @@ struct FaceData
   void fill(VField* field, FaceIndex index)
   {
     auto mesh = field->vmesh();
-    
+
     mesh->get_nodes(fieldNodes, *index);
 
     for (size_t i = 0; i < Dim; ++i)
@@ -191,7 +191,7 @@ struct FaceDataWithNormals : Data
     for (size_t i = 0; i < Data::Dimension; ++i)
     {
       Vector n;
-      mesh->get_normal(n, fieldNodes[i]);
+      mesh->get_normal(n, Data::fieldNodes[i]);
       normals[i] = XYZ_TO_FLOAT_TRIPLE(n);
     }
   }
@@ -293,7 +293,7 @@ class VarBuffer
 {
 public:
   template <typename T>
-  void write(const T& t) 
+  void write(const T& t)
   {
     std::cout << "VarBuffer writing " << t << std::endl;
   }
@@ -411,7 +411,7 @@ TEST_P(ShowFieldFaceDataWriteTest, TestWritingFaces)
       //loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tet.fld"),
     //loadFieldFromFile(TestResources::rootDir() / "Fields/test_image_node.fld"),
     //  loadFieldFromFile(TestResources::rootDir() / "Fields/hexvol.fld"),
-     // loadFieldFromFile(TestResources::rootDir() / "Fields/quadsurf.fld") 
+     // loadFieldFromFile(TestResources::rootDir() / "Fields/quadsurf.fld")
     })
   {
 
