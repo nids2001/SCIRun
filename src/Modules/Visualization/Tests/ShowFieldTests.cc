@@ -166,17 +166,17 @@ struct FaceData
 
     for (size_t i = 0; i < Dim; ++i)
     {
-      Point p;
-      mesh->get_point(p, fieldNodes[i]);
-      nodes[i] = XYZ_TO_FLOAT_TRIPLE(p);
+      mesh->get_point(points[i], fieldNodes[i]);
+      nodes[i] = XYZ_TO_FLOAT_TRIPLE(points[i]);
     }
   }
 
 protected:
   VMesh::Node::array_type fieldNodes;
+  Point points[Dim];
 };
 
-template <typename Data>
+template <typename Data, typename NormalGenerator>
 struct FaceDataWithNormals : Data
 {
   FaceNormal normals[Data::Dimension];
@@ -190,10 +190,29 @@ struct FaceDataWithNormals : Data
 
     for (size_t i = 0; i < Data::Dimension; ++i)
     {
-      Vector n;
-      mesh->get_normal(n, Data::fieldNodes[i]);
+      auto n = static_cast<NormalGenerator*>(this)->normal(mesh, i);
       normals[i] = XYZ_TO_FLOAT_TRIPLE(n);
     }
+  }
+};
+
+template <typename Data>
+struct FaceDataWithFaceNormals : FaceDataWithNormals<Data, FaceDataWithFaceNormals<Data>>
+{
+  Vector normal(VMesh* mesh, size_t i) const
+  {
+    Vector n;
+    mesh->get_normal(n, Data::fieldNodes[i]);
+    return n;
+  }
+};
+
+template <typename Data>
+struct FaceDataWithComputedNormals : FaceDataWithNormals<Data, FaceDataWithComputedNormals<Data>>
+{
+  Vector normal(VMesh*, size_t) const
+  {
+    return Data::computeNormalFromNodes();
   }
 };
 
@@ -217,20 +236,42 @@ struct FaceDataWithColor : Data
 
 struct FaceDataTri : FaceData<3>
 {
+  Vector computeNormalFromNodes() const
+  {
+    Vector edge1 = points[1] - points[0];
+    Vector edge2 = points[2] - points[1];
+    auto norm = Cross(edge1, edge2);
+    norm.normalize();
+    return norm;
+  }
 };
 
 struct FaceDataTriColor : FaceDataWithColor<FaceDataTri> {};
-struct FaceDataTriNormals : FaceDataWithNormals<FaceDataTri> {};
-struct FaceDataTriColorNormals : FaceDataWithColor<FaceDataTriNormals> {};  // first normals, then color coords
+struct FaceDataTriFaceNormals : FaceDataWithFaceNormals<FaceDataTri> {};
+struct FaceDataTriComputedNormals : FaceDataWithComputedNormals<FaceDataTri> {};
+struct FaceDataTriColorFaceNormals : FaceDataWithColor<FaceDataTriFaceNormals> {};  // first normals, then color coords
+struct FaceDataTriColorComputedNormals : FaceDataWithColor<FaceDataTriComputedNormals> {};  // first normals, then color coords
 
 
 struct FaceDataQuad : FaceData<4>
 {
+  Vector computeNormalFromNodes() const
+  {
+    Vector edge1 = points[1] - points[0];
+    Vector edge2 = points[2] - points[1];
+    Vector edge3 = points[3] - points[2];
+    Vector edge4 = points[0] - points[3];
+    auto norm = Cross(edge1, edge2) + Cross(edge2, edge3) + Cross(edge3, edge4) + Cross(edge4, edge1);
+    norm.normalize();
+    return norm;
+  }
 };
 
 struct FaceDataQuadColor : FaceDataWithColor<FaceDataQuad> {};
-struct FaceDataQuadNormals : FaceDataWithNormals<FaceDataQuad> {};
-struct FaceDataQuadColorNormals : FaceDataWithColor<FaceDataQuadNormals> {};   // first normals, then color coords
+struct FaceDataQuadFaceNormals : FaceDataWithFaceNormals<FaceDataQuad> {};
+struct FaceDataQuadComputedNormals : FaceDataWithComputedNormals<FaceDataQuad> {};
+struct FaceDataQuadColorFaceNormals : FaceDataWithColor<FaceDataQuadFaceNormals> {};   // first normals, then color coords
+struct FaceDataQuadColorComputedNormals : FaceDataWithColor<FaceDataQuadComputedNormals> {};   // first normals, then color coords
 
 #define PRINT_SIZEOF(type) std::cout << #type << " sizeof: " << sizeof(type) << std::endl
 
@@ -240,12 +281,16 @@ TEST(ShowFieldFaceDataStructTest, PrintSizeof)
   PRINT_SIZEOF(FaceNormal);
   PRINT_SIZEOF(FaceDataTri);
   PRINT_SIZEOF(FaceDataTriColor);
-  PRINT_SIZEOF(FaceDataTriNormals);
-  PRINT_SIZEOF(FaceDataTriColorNormals);
+  PRINT_SIZEOF(FaceDataTriFaceNormals);
+  PRINT_SIZEOF(FaceDataTriComputedNormals);
+  PRINT_SIZEOF(FaceDataTriColorFaceNormals);
+  PRINT_SIZEOF(FaceDataTriColorComputedNormals);
   PRINT_SIZEOF(FaceDataQuad);
   PRINT_SIZEOF(FaceDataQuadColor);
-  PRINT_SIZEOF(FaceDataQuadNormals);
-  PRINT_SIZEOF(FaceDataQuadColorNormals);
+  PRINT_SIZEOF(FaceDataQuadFaceNormals);
+  PRINT_SIZEOF(FaceDataQuadComputedNormals);
+  PRINT_SIZEOF(FaceDataQuadColorFaceNormals);
+  PRINT_SIZEOF(FaceDataQuadColorComputedNormals);
 }
 
 template <class FaceDataType>
@@ -276,8 +321,8 @@ std::ostream& operator<<(std::ostream& o, const FaceData<N>& f)
   return o;
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const FaceDataWithNormals<T>& f)
+template <typename T, typename D>
+std::ostream& operator<<(std::ostream& o, const FaceDataWithNormals<T, D>& f)
 {
   o << (f.Dimension == 3 ? "Tri:\n" : "Quad:\n");
   for (const auto& p : f.nodes)
@@ -349,18 +394,25 @@ WriteFaceRange makeWriteFaceRange(const WriteArgs& input)
 }
 
 #define WRITE_FACE_MAKER_FOR_TYPE(T) [](const WriteArgs& input) { return makeWriteFaceRange<T>(input); }
+
+// template <class T>
+// auto WRITE_FACE_MAKER_FOR_TYPE_FUNC()
+// {
+//   return { sizeof(T), [](const WriteArgs& input) { return makeWriteFaceRange<T>(input); } };
+// }
+
 #define WRITE_SIZED_FACE_MAKER_FOR_TYPE(T) { sizeof(T), [](const WriteArgs& input) { return makeWriteFaceRange<T>(input); } }
 
 std::map<WriteCase, SizedFaceDataWriterMaker> faceGenerationMap =
 {
   {WriteCase::TRI, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTri) },
   {WriteCase::TRI_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTriColor) },
-  {WriteCase::TRI_NORMALS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTriNormals) },
-  {WriteCase::TRI_NORMALS_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTriColorNormals) },
+  {WriteCase::TRI_NORMALS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTriFaceNormals) },
+  {WriteCase::TRI_NORMALS_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataTriColorFaceNormals) },
   {WriteCase::QUAD, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuad) },
   {WriteCase::QUAD_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuadColor) },
-  {WriteCase::QUAD_NORMALS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuadNormals) },
-  {WriteCase::QUAD_NORMALS_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuadColorNormals) }
+  {WriteCase::QUAD_NORMALS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuadComputedNormals) },
+  {WriteCase::QUAD_NORMALS_TEXCOORDS, WRITE_SIZED_FACE_MAKER_FOR_TYPE(FaceDataQuadColorFaceNormals) }
 };
 
 //TODO: create similar mapping for color->texture functions based on mesh dim and basis
@@ -389,7 +441,7 @@ TEST(ShowFieldFaceDataStructTest, EnumerateWriteCases)
   }
 }
 
-class ShowFieldFaceDataWriteTest : public ::testing::TestWithParam<std::tuple<bool, bool, bool>>
+class ShowFieldFaceDataWriteTest : public ::testing::TestWithParam<std::tuple<bool, bool, bool, bool>>
 {
 protected:
   virtual void SetUp()
@@ -405,13 +457,14 @@ TEST_P(ShowFieldFaceDataWriteTest, TestWritingFaces)
 {
   for (auto f :
     {
-     // CreateEmptyLatVol(2, 2, 2),
-      loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tri.fld")
+      CreateEmptyLatVol(2, 2, 2)
+      //,
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tri.fld")
       //,
       //loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tet.fld"),
     //loadFieldFromFile(TestResources::rootDir() / "Fields/test_image_node.fld"),
-    //  loadFieldFromFile(TestResources::rootDir() / "Fields/hexvol.fld"),
-     // loadFieldFromFile(TestResources::rootDir() / "Fields/quadsurf.fld")
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/hexvol.fld")
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/quadsurf.fld")
     })
   {
 
@@ -428,6 +481,8 @@ TEST_P(ShowFieldFaceDataWriteTest, TestWritingFaces)
     const bool useColorMap = std::get<2>(GetParam());
     auto writeCase = getWriteCase(useQuads, useNormals, useColorMap);
     auto sizedWriterFunc = faceGenerationMap[writeCase];
+
+    const bool useFaceNormals = std::get<3>(GetParam()); //state.get(RenderState::USE_FACE_NORMALS) && mesh->has_normals();
 
     std::cout << std::boolalpha <<
       "useQuads " << useQuads <<
@@ -457,9 +512,81 @@ TEST_P(ShowFieldFaceDataWriteTest, TestWritingFaces)
   }
 }
 
+TEST(ShowFieldFaceDataNormalWriteTest, TestWritingNormals)
+{
+  for (auto f :
+    {
+      //CreateEmptyLatVol(2, 2, 2)
+      //,
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tri.fld")
+      //,
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/extractsimpleisosurface/test_isosimsuf_tet.fld"),
+    //loadFieldFromFile(TestResources::rootDir() / "Fields/test_image_node.fld"),
+      //loadFieldFromFile(TestResources::rootDir() / "Fields/hexvol.fld")
+      loadFieldFromFile(TestResources::rootDir() / "Fields/quadsurf.fld")
+    })
+  {
+
+    VarBuffer vbo;
+    const bool useQuads = true;
+    const bool useNormals = true;
+
+    auto mesh = f->vmesh();
+    auto field = f->vfield();
+    mesh->synchronize(Mesh::FACES_E);
+    if (useNormals)
+    {
+      mesh->synchronize(Mesh::NORMALS_E);
+    }
+    //const bool useColorMap = false;
+    //auto writeCase = getWriteCase(useQuads, useNormals, useColorMap);
+    //auto sizedWriterFunc = faceGenerationMap[writeCase];
+
+    auto faceNormals = WRITE_FACE_MAKER_FOR_TYPE(FaceDataQuadFaceNormals);
+    auto computedNormals = WRITE_FACE_MAKER_FOR_TYPE(FaceDataQuadComputedNormals);
+
+
+    std::cout << "~~~~~FACE NORMALS~~~~~~" << std::endl;
+    if (faceNormals)
+    {
+      auto writeRange = faceNormals({ field, &vbo });
+
+      VMesh::Face::iterator b, e;
+      mesh->begin(b);
+      mesh->end(e);
+
+      //TODO: easy multithreading with this
+      writeRange(b, e);
+    }
+    else
+    {
+      FAIL() << "no writer func defined for write case";
+    }
+
+    std::cout << "~~~~~COMPUTED NORMALS~~~~~~" << std::endl;
+    if (computedNormals)
+    {
+      auto writeRange = computedNormals({ field, &vbo });
+
+      VMesh::Face::iterator b, e;
+      mesh->begin(b);
+      mesh->end(e);
+
+      //TODO: easy multithreading with this
+      writeRange(b, e);
+    }
+    else
+    {
+      FAIL() << "no writer func defined for write case";
+    }
+
+  }
+}
+
+
 
 INSTANTIATE_TEST_CASE_P(
   TestWritingFaces,
   ShowFieldFaceDataWriteTest,
-  Combine(Bool(), Bool(), Bool())
+  Combine(Bool(), Bool(), Bool(), Bool())
 );
