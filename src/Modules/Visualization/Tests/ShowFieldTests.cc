@@ -150,12 +150,13 @@ struct FaceNormal
 
 using FaceIndex = VMesh::Face::iterator;
 
+//TODO: try changing to function
 #define XYZ_TO_FLOAT_TRIPLE(p) { static_cast<float>(p.x()), static_cast<float>(p.y()), static_cast<float>(p.z()) }
 
 template <int Dim>
 struct FaceData
 {
-  FaceNode nodes[Dim];
+  FaceNode geomNodes[Dim];
   static constexpr int Dimension = Dim;
 
   void fill(VField* field, FaceIndex index)
@@ -166,20 +167,21 @@ struct FaceData
 
     for (size_t i = 0; i < Dim; ++i)
     {
-      mesh->get_point(points[i], fieldNodes[i]);
-      nodes[i] = XYZ_TO_FLOAT_TRIPLE(points[i]);
+      mesh->get_point(nodePoints[i], fieldNodes[i]);
+      geomNodes[i] = XYZ_TO_FLOAT_TRIPLE(nodePoints[i]);
     }
   }
 
+//TODO: cannot have any extra data than what goes into VarBuffer! remember it's memcpyed.
 protected:
   VMesh::Node::array_type fieldNodes;
-  Point points[Dim];
+  Point nodePoints[Dim];
 };
 
 template <typename Data, typename NormalGenerator>
 struct FaceDataWithNormals : Data
 {
-  FaceNormal normals[Data::Dimension];
+  FaceNormal geomNormals[Data::Dimension];
 
   void fill(VField* field, FaceIndex index)
   {
@@ -191,7 +193,7 @@ struct FaceDataWithNormals : Data
     for (size_t i = 0; i < Data::Dimension; ++i)
     {
       auto n = static_cast<NormalGenerator*>(this)->normal(mesh, i);
-      normals[i] = XYZ_TO_FLOAT_TRIPLE(n);
+      geomNormals[i] = XYZ_TO_FLOAT_TRIPLE(n);
     }
   }
 };
@@ -236,10 +238,11 @@ struct FaceDataWithColor : Data
 
 struct FaceDataTri : FaceData<3>
 {
+  //TODO: recomputed x3! bad!
   Vector computeNormalFromNodes() const
   {
-    Vector edge1 = points[1] - points[0];
-    Vector edge2 = points[2] - points[1];
+    Vector edge1 = nodePoints[1] - nodePoints[0];
+    Vector edge2 = nodePoints[2] - nodePoints[1];
     auto norm = Cross(edge1, edge2);
     norm.normalize();
     return norm;
@@ -255,12 +258,13 @@ struct FaceDataTriColorComputedNormals : FaceDataWithColor<FaceDataTriComputedNo
 
 struct FaceDataQuad : FaceData<4>
 {
+  //TODO: recomputed x4! bad!
   Vector computeNormalFromNodes() const
   {
-    Vector edge1 = points[1] - points[0];
-    Vector edge2 = points[2] - points[1];
-    Vector edge3 = points[3] - points[2];
-    Vector edge4 = points[0] - points[3];
+    Vector edge1 = nodePoints[1] - nodePoints[0];
+    Vector edge2 = nodePoints[2] - nodePoints[1];
+    Vector edge3 = nodePoints[3] - nodePoints[2];
+    Vector edge4 = nodePoints[0] - nodePoints[3];
     auto norm = Cross(edge1, edge2) + Cross(edge2, edge3) + Cross(edge3, edge4) + Cross(edge4, edge1);
     norm.normalize();
     return norm;
@@ -316,7 +320,7 @@ template <int N>
 std::ostream& operator<<(std::ostream& o, const FaceData<N>& f)
 {
   o << (N == 3 ? "Tri:\n" : "Quad:\n");
-  for (const auto& p : f.nodes)
+  for (const auto& p : f.geomNodes)
     o << "\tNode[" << p.x << ", " << p.y << ", " << p.z << "]\n";
   return o;
 }
@@ -325,10 +329,10 @@ template <typename T, typename D>
 std::ostream& operator<<(std::ostream& o, const FaceDataWithNormals<T, D>& f)
 {
   o << (f.Dimension == 3 ? "Tri:\n" : "Quad:\n");
-  for (const auto& p : f.nodes)
+  for (const auto& p : f.geomNodes)
     o << "\tNode[" << p.x << ", " << p.y << ", " << p.z << "]\n";
   o << "Normals:\n";
-  for (const auto& v : f.normals)
+  for (const auto& v : f.geomNormals)
     o << "\tVector[" << v.x << ", " << v.y << ", " << v.z << "]\n";
   return o;
 }
@@ -393,6 +397,7 @@ WriteFaceRange makeWriteFaceRange(const WriteArgs& input)
   return [writer](FaceIndex begin, FaceIndex end) { writer.writeRange(begin, end); };
 }
 
+//TODO: try changing to function
 #define WRITE_FACE_MAKER_FOR_TYPE(T) [](const WriteArgs& input) { return makeWriteFaceRange<T>(input); }
 
 // template <class T>
